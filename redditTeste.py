@@ -7,7 +7,7 @@ from spotipy.oauth2 import SpotifyOAuth
 from dotenv   import load_dotenv
 from datetime import datetime, timedelta
 
-class ConectarSpotify():
+class ConnectSpotify():
 
     def __init__(self):
 
@@ -24,19 +24,19 @@ class ConectarSpotify():
         ))
 
         self.userid = self.sp.current_user()["id"]
-        self.playlist_name = "LSMP - Ladika Smart Metalcore Playlist"
+        self.playlist_name = os.getenv('spotifyPlaylistName')
         self.description = "Playlist criada e atualizada automaticamente."
-        self.playlistID = '276lrZKj397C8zSuq4bGjd'
+        self.playlistID = os.getenv('spotifyPlaylistID')
 
 
-    def criarPlaylist(self):
+    def createPLaylist(self):
 
         playlist = self.sp.user_playlist_create(
             self.userid, self.playlist_name, public=True, description=self.description)
-        return playlist["id"]  # Retorna o ID da playlist
+        return playlist["id"]  # Return the new playlist ID
     
 
-    def consultarPlaylist(self):
+    def getPlaylistSongs(self):
 
         playlist = self.sp.playlist_items(self.playlistID, limit=100)
         playlist = playlist['items']
@@ -44,25 +44,25 @@ class ConectarSpotify():
         return uriList
 
     
-    def adicionarNaPlaylist(self, track_uris):
+    def addToPlaylist(self, track_uris):
 
-        # Adicionar as músicas à playlist
+        # Add Songs to the playlist
         if track_uris:
             self.sp.playlist_add_items(self.playlistID, track_uris)
             print(f"✅ {len(track_uris)} músicas adicionadas à playlist '{self.playlist_name}' com sucesso!")
         else:
-            print("Nenhuma música foi encontrada para adicionar à playlist.")
+            print("❌ - Nenhuma música foi encontrada para adicionar à playlist.")
 
-    def removerDaPlaylist(self, track_uris):
+    def removeFromPlaylist(self, track_uris):
             
-        # Remover as músicas da playlist
+        # Remove songs from the playlist
         if track_uris:
             self.sp.playlist_remove_all_occurrences_of_items(self.playlistID, track_uris)
             print(f"✅ {len(track_uris)} músicas removidas da playlist '{self.playlist_name}' com sucesso!")
         else:
-            print("Nenhuma música foi encontrada para remover da playlist.")
+            print("❌ - Nenhuma música foi encontrada para remover da playlist.")
     
-    def procurarMusica(self, track_name, artist_name=None):
+    def searchSong(self, track_name, artist_name=None):
 
         query = f"track:{track_name}"
 
@@ -70,19 +70,19 @@ class ConectarSpotify():
             query += f" artist:{artist_name}"
 
         try:
-            
+
             results = self.sp.search(q=query, type="track", limit=1)
         except:
-            
+
             results = self.sp.search(q=query, type="track", limit=1)
-            
+
         tracks = results.get("tracks", {}).get("items", [])
         if tracks:
             trackUri = tracks[0]['uri']
             trackName = tracks[0]['name']
             trackArtist = tracks[0]['artists'][0]['name']
             return trackUri, trackName, trackArtist  # Retorna o URI da música
-        
+
         else:
             trackUri = None
             trackName = None
@@ -90,7 +90,7 @@ class ConectarSpotify():
             return trackUri, trackName, trackArtist  # Retorna o URI da música
 
 
-def consultarReddit():
+def getRedditPost():
     
     print("🔄 Consultando Reddit...")
 
@@ -104,7 +104,7 @@ def consultarReddit():
     subreddit = reddit.subreddit(subreddit_name)
 
     # Calcula o timestamp de 7 dias atrás
-    one_week_ago = datetime.utcnow() - timedelta(days=5)
+    one_week_ago = datetime.utcnow() - timedelta(days=7)
     one_week_ago_timestamp = int(one_week_ago.timestamp())
 
     # Busca posts da última semana
@@ -150,8 +150,9 @@ def consultarReddit():
 
 load_dotenv(".env")
 
-dfMusicas = consultarReddit()
+dfMusicas = getRedditPost()
 
+#abre as planilhas
 try:
     planilhaMusicas = pd.read_excel('musicas.xlsx', sheet_name='Musicas')
     planilhaBlacklist = pd.read_excel('musicas.xlsx', sheet_name='Blacklist')
@@ -160,11 +161,12 @@ except:
     planilhaMusicas = pd.DataFrame(columns=['Banda', 'Música', 'uri'])
     planilhaBlacklist = pd.DataFrame(columns=['Banda', 'Música'])
 
-spotify = ConectarSpotify()
+spotify = ConnectSpotify()
 
 track_uris = []
 dictMusicasConsultadas = {}
 
+#procura as musicas e cria um DF com os URI
 if not dfMusicas.empty:
     os.system('cls')
    
@@ -174,7 +176,7 @@ if not dfMusicas.empty:
         artist_name = row.get("Banda")  # Nome do artista
 
         # Buscar o URI da música
-        track_uri, track_name_spotify, track_artist_spotify = spotify.procurarMusica(track_name=track_name, artist_name=artist_name)
+        track_uri, track_name_spotify, track_artist_spotify = spotify.searchSong(track_name=track_name, artist_name=artist_name)
         if track_uri:
             track_uris.append(track_uri)
             dictMusicasConsultadas[track_artist_spotify] = track_name_spotify
@@ -183,36 +185,26 @@ if not dfMusicas.empty:
             print(f"⚠️ - Música não encontrada: {artist_name} - {track_name}")
 
 else:
-    print("Nenhuma música nova encontrada.")
+    print("😢 - Nenhuma música nova encontrada.")
     
 dfMusicasFinal = pd.DataFrame(dictMusicasConsultadas.items(), columns=['Banda', 'Música'])
 dfMusicasFinal['uri'] = track_uris
 
-listaUri = spotify.consultarPlaylist()
+#le a playlist
+playlist = spotify.getPlaylistSongs()
 
-dfFiltrado = dfMusicasFinal[~dfMusicasFinal['uri'].isin(listaUri)]
-print(dfFiltrado)
+#remove as musicas que ja estao na playlist
+dfFiltrado = dfMusicasFinal[~dfMusicasFinal['uri'].isin(playlist)]
+print(f"🔍 - Músicas filtradas!")
 
-if dfFiltrado.empty:
-    
-    dfFiltrado = pd.DataFrame(columns=['Banda', 'Música', 'uri'])
-
-print(dfFiltrado)
 dfFinal = pd.concat([planilhaMusicas, dfFiltrado], ignore_index=True)
+dfFinal = dfFinal[~dfFinal['Banda'].isin(planilhaBlacklist['Banda'])]
 dfFinal = dfFinal.drop_duplicates(subset=['Música'], keep='last')
-dfFinalFiltrado = dfFinal[~dfFinal['Banda'].isin(planilhaBlacklist['Banda'])]
 
 with pd.ExcelWriter('planilha_com_abas.xlsx') as writer:
-    dfFinalFiltrado.to_excel(writer, sheet_name='Musicas', index=False)
-    planilhaBlacklist.to_excel(writer, sheet_name='Blacklist', index=False)
+    dfFinal.to_excel(writer, sheet_name='Musicas', index=False)
 
-spotify.adicionarNaPlaylist(dfFiltrado['uri'].tolist())
-
-dfRemover = dfFinalFiltrado[~dfFinalFiltrado['uri'].isin(dfMusicasFinal['uri'])]
-
-spotify.removerDaPlaylist(dfRemover['uri'].tolist())
-
-print('Musicas removidas: ', dfRemover['Música'].tolist())
-print('Musicas adicionadas: ', dfFiltrado['Música'].tolist())
-    
-print('✅ Playlist atualizada com sucesso!')
+spotify.removeFromPlaylist(playlist['uri'].tolist())
+print("🧹 - Planilha limpa")
+spotify.addToPlaylist(dfFiltrado['uri'].tolist())
+print('✅ - Adicionadas as novas musicas!')
