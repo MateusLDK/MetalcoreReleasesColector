@@ -204,7 +204,7 @@ dfFinal = dfFinal.drop_duplicates(subset=['Música'], keep='last')
 with pd.ExcelWriter('planilha_com_abas.xlsx') as writer:
     dfFinal.to_excel(writer, sheet_name='Musicas', index=False)
 
-spotify.removeFromPlaylist(playlist['uri'].tolist())
+spotify.removeFromPlaylist(playlist)
 print("🧹 - Planilha limpa")
 spotify.addToPlaylist(dfFiltrado['uri'].tolist())
-print('✅ - Adicionadas as novas musicas!')
+print('✅ - Playlist Atualizada!')
