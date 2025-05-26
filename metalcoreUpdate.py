@@ -52,7 +52,8 @@ class ConnectSpotify():
         # Add Songs to the playlist
         if track_uris:
             self.sp.playlist_add_items(self.playlistID, track_uris)
-            print(f"✅ {len(track_uris)} songs added to playlist '{self.playlist_name}' successfully!")
+            print('✅ - Playlist Updated!')
+            print(f"{len(track_uris)} songs added to playlist '{self.playlist_name}' successfully!")
         else:
             print("❌ - No songs found to add to the playlist.")
 
@@ -61,7 +62,8 @@ class ConnectSpotify():
         # Remove songs from the playlist
         if track_uris:
             self.sp.playlist_remove_all_occurrences_of_items(self.playlistID, track_uris)
-            print(f"✅ {len(track_uris)} songs removed from playlist '{self.playlist_name}' successfully!")
+            print("🧹 - Playlist cleaned!")
+            print(f"{len(track_uris)} songs removed from playlist '{self.playlist_name}' successfully!")
         else:
             print("❌ - No songs found to remove from the playlist.")
     
@@ -199,10 +201,10 @@ playlist = spotify.get_playlist_songs()
 
 # Remove songs already in the playlist
 filtered_df = df_final_songs[~df_final_songs['uri'].isin(playlist)]
-print(f"🔍 - Songs filtered!")
 
 # Remove blacklisted bands
 filtered_df = filtered_df[~filtered_df['Band'].isin(blacklist_bands)]
+print(f"🚫 - Blacklist bands removed!")
 
 # Remove duplicates
 filtered_df = filtered_df.drop_duplicates(subset=['Song'], keep='last')
@@ -211,6 +213,4 @@ filtered_df = filtered_df.drop_duplicates(subset=['Song'], keep='last')
 filtered_df.to_csv('songs.csv', index=False)
 
 spotify.remove_from_playlist(playlist)
-print("🧹 - Playlist cleaned")
 spotify.add_to_playlist(filtered_df['uri'].tolist())
-print('✅ - Playlist Updated!')
