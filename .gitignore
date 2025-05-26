@@ -5,6 +5,7 @@ __pycache__/
 
 #random
 songs.csv
+blacklist.json
 
 # C extensions
 *.so
