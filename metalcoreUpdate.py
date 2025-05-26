@@ -5,7 +5,6 @@ import pandas as pd
 from spotipy.oauth2 import SpotifyOAuth
 from dotenv   import load_dotenv
 from datetime import datetime, timedelta
-from create_playlist import create_playlist
 import json
 
 class ConnectSpotify():
@@ -110,13 +109,16 @@ def get_reddit_posts():
     # Calculate timestamp for 7 days ago
     one_week_ago = datetime.utcnow() - timedelta(days=7)
     one_week_ago_timestamp = int(one_week_ago.timestamp())
+    date_object = datetime.now()
+    month_name_full = date_object.strftime("%B")
 
     # Fetch posts from the last week
     lists = []
 
     for submission in subreddit.new(limit=None):
 
-        if submission.created_utc >= one_week_ago_timestamp and 'Weekly Release Thread' in submission.title:
+        if submission.created_utc >= one_week_ago_timestamp and f'Weekly Release Thread {month_name_full}' in submission.title:
+            print(f"🔄 - Found {submission.title}...")
             title = submission.title.split(' ')
             month = title[3]
             day = title[4]
@@ -171,18 +173,20 @@ if not df_songs.empty:
     os.system('cls')
    
     for _, row in df_songs.iterrows():
-
         track_name = row["Song"]  # Song name
         artist_name = row.get("Band")  # Artist name
+
+        # Remove 'feat' and anything after it from the track name
+        if 'feat' in track_name:
+            track_name = track_name.split('feat')[0].strip()
 
         # Search for the song URI
         track_uri, track_name_spotify, track_artist_spotify = spotify.search_song(track_name=track_name, artist_name=artist_name)
         if track_uri:
             track_uris.append(track_uri)
             songs_consulted_dict[track_artist_spotify] = track_name_spotify
-
         else:
-            print(f"⚠️ - Song not found: {artist_name} - {track_name}")
+            print(f"⚠️ - Song not found: {artist_name} - {row['Song']}")
 
 else:
     print("😢 - No new songs found.")
