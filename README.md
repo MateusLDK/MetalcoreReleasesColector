@@ -38,9 +38,8 @@ This project automatically collects new metalcore releases from Reddit and updat
 
 ## Usage Notes
 - For best results, run `redditTeste.py` every Friday to ensure your playlist is up to date with the latest weekly releases.
-- The script manages a blacklist using the `blacklist.json` file. You no longer need to use Excel for blacklisting bands.
 
-## Blacklist Feature
+## Blacklist Feature (testing)
 - To prevent certain bands from being added to your playlist, use the blacklist feature:
   - Edit the `blacklist.json` file in the project folder.
   - Add the names of bands you want to exclude as strings in the JSON array. Example:
