@@ -192,7 +192,7 @@ if not df_songs.empty:
 
 else:
     print("😢 - No new songs found.")
-    
+
 df_final_songs = pd.DataFrame(songs_consulted_dict.items(), columns=['Band', 'Song'])
 df_final_songs['uri'] = track_uris
 
