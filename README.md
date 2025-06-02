@@ -39,6 +39,9 @@ This project automatically collects new metalcore releases from Reddit and updat
 ## Usage Notes
 - For best results, run `redditTeste.py` every Friday to ensure your playlist is up to date with the latest weekly releases.
 
+## Important Note About Playlist Updates
+- **Warning:** Every time you run the script, your Spotify playlist will be wiped (all songs removed) before adding the new weekly releases. This ensures only the latest songs are present, but it also means any songs you add manually will be deleted. If you want to keep songs permanently, consider creating a separate playlist for manual additions.
+
 ## Blacklist Feature (testing)
 - To prevent certain bands from being added to your playlist, use the blacklist feature:
   - Edit the `blacklist.json` file in the project folder.
