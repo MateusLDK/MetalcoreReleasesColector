@@ -6,6 +6,7 @@ from spotipy.oauth2 import SpotifyOAuth
 from dotenv   import load_dotenv
 from datetime import datetime, timedelta
 import json
+from tqdm import tqdm
 
 class ConnectSpotify():
 
@@ -57,7 +58,7 @@ class ConnectSpotify():
         else:
             print("❌ - No songs found to add to the playlist.")
 
-    def remove_from_playlist(self, track_uris):
+    def clear_playlist(self, track_uris):
             
         # Remove songs from the playlist
         if track_uris:
@@ -109,10 +110,16 @@ def get_reddit_posts():
     subreddit = reddit.subreddit(subreddit_name)
 
     # Calculate timestamp for 7 days ago
-    one_week_ago = datetime.utcnow() - timedelta(days=7)
+    one_week_ago = datetime.now() - timedelta(days=7)
     one_week_ago_timestamp = int(one_week_ago.timestamp())
-    date_object = datetime.now()
-    month_name_full = date_object.strftime("%B")
+
+    if datetime.now().day < 7:
+        # If the current day is less than 7, use the previous month
+        month_name_full = one_week_ago.strftime("%B")
+
+    else:
+        # Otherwise, use the current month
+        month_name_full = datetime.now().strftime("%B")
 
     # Fetch posts from the last week
     lists = []
@@ -121,13 +128,6 @@ def get_reddit_posts():
 
         if submission.created_utc >= one_week_ago_timestamp and f'Weekly Release Thread {month_name_full}' in submission.title:
             print(f"🔄 - Found {submission.title}...")
-            title = submission.title.split(' ')
-            month = title[3]
-            day = title[4]
-            day = day.replace('th', '')
-            day = day.replace(',','')
-            year = title[5]
-            date = f'{day}/{month}/{year}'
 
             post_list = submission.selftext.split('\n')
             while '' in post_list:
@@ -148,69 +148,74 @@ def get_reddit_posts():
                 current_category = item
 
         df_songs = pd.DataFrame(data)
-        df_songs['Date'] = date
         df_songs = df_songs.loc[df_songs['Category'] != '**Albums/EPs**']
         
     return df_songs
 
-load_dotenv(".env")
+if __name__ == "__main__":
 
-df_songs = get_reddit_posts()
+    load_dotenv(".env")
+    spotify = ConnectSpotify()
+    df_songs = get_reddit_posts()
+    track_uris = []
+    songs_consulted_dict = {}
 
-# Open blacklist from JSON
-BLACKLIST_FILE = 'blacklist.json'
-if os.path.exists(BLACKLIST_FILE):
-    with open(BLACKLIST_FILE, 'r', encoding='utf-8') as f:
-        blacklist_bands = set(json.load(f))
-else:
-    blacklist_bands = set()
+    BLACKLIST_FILE = 'blacklist.json'
+    if os.path.exists(BLACKLIST_FILE):
+        with open(BLACKLIST_FILE, 'r', encoding='utf-8') as f:
+            blacklist_bands = set(json.load(f))
+    else:
+        blacklist_bands = set()
 
-spotify = ConnectSpotify()
+    # Search for songs and create a DF with URIs
+    if not df_songs.empty:
+        not_found_songs = []
+        for _, row in tqdm(df_songs.iterrows(), total=len(df_songs), desc="Processing songs"):
+            track_name = row["Song"]  # Song name
+            artist_name = row.get("Band")  # Artist name
 
-track_uris = []
-songs_consulted_dict = {}
+            # Remove 'feat' and anything after it from the track name
+                # This is to ensure we find the correct song in Spotify
+            if 'feat' in track_name:
+                track_name = track_name.split('feat')[0].strip()
+            if 'feat' in artist_name:
+                artist_name = artist_name.split('feat')[0].strip()
 
-# Search for songs and create a DF with URIs
-if not df_songs.empty:
-    os.system('cls')
-   
-    for _, row in df_songs.iterrows():
-        track_name = row["Song"]  # Song name
-        artist_name = row.get("Band")  # Artist name
+            # get the song URI
+                # this will search for the song in Spotify and return the URI if found
+            track_uri, track_name_spotify, track_artist_spotify = spotify.search_song(track_name=track_name, artist_name=artist_name)
+            if track_uri:
+                track_uris.append(track_uri)
+                songs_consulted_dict[track_artist_spotify] = track_name_spotify
+            else:
+                not_found_songs.append((artist_name, track_name))
+        
+        for artist, song in not_found_songs:
+            print(f"⚠️ - Song not found: {artist} - {song}")
 
-        # Remove 'feat' and anything after it from the track name
-        if 'feat' in track_name:
-            track_name = track_name.split('feat')[0].strip()
+    else:
+        print("😢 - No new songs found.")
 
-        # Search for the song URI
-        track_uri, track_name_spotify, track_artist_spotify = spotify.search_song(track_name=track_name, artist_name=artist_name)
-        if track_uri:
-            track_uris.append(track_uri)
-            songs_consulted_dict[track_artist_spotify] = track_name_spotify
-        else:
-            print(f"⚠️ - Song not found: {artist_name} - {row['Song']}")
+    df_final_songs = pd.DataFrame(songs_consulted_dict.items(), columns=['Band', 'Song'])
+    df_final_songs['uri'] = track_uris
 
-else:
-    print("😢 - No new songs found.")
+    # Read playlist
+    playlist = spotify.get_playlist_songs()
 
-df_final_songs = pd.DataFrame(songs_consulted_dict.items(), columns=['Band', 'Song'])
-df_final_songs['uri'] = track_uris
+    # Remove any song if they were already added to the playlist in the last week
+    filtered_df = df_final_songs[~df_final_songs['uri'].isin(playlist)]
+    print(f"❌ - Removed any song if they were already added to the playlist in the last week!")
 
-# Read playlist
-playlist = spotify.get_playlist_songs()
+    # Remove blacklisted bands
+    filtered_df = filtered_df[~filtered_df['Band'].isin(blacklist_bands)]
+    print(f"🚫 - Blacklist bands removed!")
 
-# Remove songs already in the playlist
-filtered_df = df_final_songs[~df_final_songs['uri'].isin(playlist)]
+    # Remove duplicates
+    filtered_df = filtered_df.drop_duplicates(subset=['Song'], keep='last')
+    print(f"❌ - Removed duplicates from the list!")
 
-# Remove blacklisted bands
-filtered_df = filtered_df[~filtered_df['Band'].isin(blacklist_bands)]
-print(f"🚫 - Blacklist bands removed!")
+    # Save to CSV (or handle as needed)
+    #filtered_df.to_csv('songs.csv', index=False)
 
-# Remove duplicates
-filtered_df = filtered_df.drop_duplicates(subset=['Song'], keep='last')
-
-# Save to CSV (or handle as needed)
-filtered_df.to_csv('songs.csv', index=False)
-
-spotify.remove_from_playlist(playlist)
-spotify.add_to_playlist(filtered_df['uri'].tolist())
+    spotify.clear_playlist(playlist)
+    spotify.add_to_playlist(filtered_df['uri'].tolist())
