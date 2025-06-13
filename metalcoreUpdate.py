@@ -113,7 +113,7 @@ def get_reddit_posts():
     one_week_ago = datetime.now() - timedelta(days=7)
     one_week_ago_timestamp = int(one_week_ago.timestamp())
 
-    if datetime.now().day < 7:
+    if datetime.now().day < 6:
         # If the current day is less than 7, use the previous month
         month_name_full = one_week_ago.strftime("%B")
 
