@@ -36,7 +36,7 @@ class ConnectSpotify():
             public=True,
             description=self.description
         )
-        
+
         return playlist["id"]
 
 
@@ -112,9 +112,10 @@ def get_reddit_posts():
     # Calculate timestamp for 7 days ago
     one_week_ago = datetime.now() - timedelta(days=7)
     one_week_ago_timestamp = int(one_week_ago.timestamp())
+    week_day = datetime.weekday(datetime.now())
 
-    if datetime.now().day < 6:
-        # If the current day is less than 7, use the previous month
+    if datetime.now().day < 6 and week_day < 4:
+        # If the current day is less than 6 and there was no Friday yet, use the previous month
         month_name_full = one_week_ago.strftime("%B")
 
     else:
