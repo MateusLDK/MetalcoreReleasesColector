@@ -2,3 +2,4 @@ praw
 spotipy
 pandas
 python-dotenv
+tqdm

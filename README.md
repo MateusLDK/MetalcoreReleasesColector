@@ -2,6 +2,10 @@
 
 This project automatically collects new metalcore releases from Reddit and updates a Spotify playlist with the latest tracks.
 
+## Useful information
+
+Spotify now requires a premium subscription user ID and Secret to use it's API.
+
 ## Setup Instructions
 
 1. **Clone the repository and install dependencies**
